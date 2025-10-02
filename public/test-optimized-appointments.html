@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimized Appointments API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #007bff;
+        }
+        .performance-metrics {
+            background: #e8f5e8;
+            border-left-color: #28a745;
+        }
+        .error {
+            background: #ffeaea;
+            border-left-color: #dc3545;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .appointment-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-confirmed { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+        .status-rejected { background: #e2e3e5; color: #383d41; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .filter-section {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 20px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Optimized Appointments API Test</h1>
+    <p>This page tests the optimized appointments API with compound MongoDB indexes for <strong>doctorId</strong>, <strong>date</strong>, <strong>time</strong>, and <strong>status</strong> fields.</p>
+
+    <div class="container">
+        <h2>🔍 Query Filters</h2>
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="doctorId">Doctor ID:</label>
+                <input type="text" id="doctorId" placeholder="68d131bf0d6f12b157808929" value="68d131bf0d6f12b157808929">
+            </div>
+            <div class="filter-group">
+                <label for="patientId">Patient ID:</label>
+                <input type="text" id="patientId" placeholder="Optional patient ID">
+            </div>
+            <div class="filter-group">
+                <label for="status">Status:</label>
+                <select id="status">
+                    <option value="">All Statuses</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="completed">Completed</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="date">Date:</label>
+                <input type="date" id="date">
+            </div>
+            <div class="filter-group">
+                <label for="time">Time:</label>
+                <input type="time" id="time">
+            </div>
+        </div>
+        
+        <button onclick="testOptimizedQuery()">🚀 Test Optimized Query</button>
+        <button onclick="testSlotAvailability()">⚡ Test Slot Availability</button>
+        <button onclick="clearResults()">🧹 Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        let baseUrl = 'http://localhost:3001'; // Adjust port if needed
+
+        async function testOptimizedQuery() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="test-section"><h3>⏳ Testing Optimized Appointments Query...</h3></div>';
+            
+            try {
+                const params = new URLSearchParams();
+                
+                const doctorId = document.getElementById('doctorId').value;
+                const patientId = document.getElementById('patientId').value;
+                const status = document.getElementById('status').value;
+                const date = document.getElementById('date').value;
+                const time = document.getElementById('time').value;
+                
+                if (doctorId) params.append('doctorId', doctorId);
+                if (patientId) params.append('patientId', patientId);
+                if (status) params.append('status', status);
+                if (date) params.append('date', date);
+                if (time) params.append('time', time);
+                
+                if (!doctorId && !patientId) {
+                    results.innerHTML = '<div class="test-section error"><h3>❌ Error</h3><p>Please provide either Doctor ID or Patient ID</p></div>';
+                    return;
+                }
+                
+                const startTime = Date.now();
+                const response = await fetch(`${baseUrl}/api/appointments/optimized?${params}`);
+                const clientTime = Date.now() - startTime;
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayQueryResults(data, clientTime);
+                } else {
+                    results.innerHTML = `<div class="test-section error"><h3>❌ Query Failed</h3><p>${data.error}</p></div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="test-section error"><h3>❌ Network Error</h3><p>${error.message}</p></div>`;
+            }
+        }
+        
+        async function testSlotAvailability() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="test-section"><h3>⏳ Testing Slot Availability...</h3></div>';
+            
+            try {
+                const doctorId = document.getElementById('doctorId').value;
+                const date = document.getElementById('date').value || '2025-09-30';
+                const time = document.getElementById('time').value || '10:00';
+                
+                if (!doctorId) {
+                    results.innerHTML = '<div class="test-section error"><h3>❌ Error</h3><p>Please provide Doctor ID for slot availability test</p></div>';
+                    return;
+                }
+                
+                const params = new URLSearchParams({
+                    doctorId,
+                    date,
+                    time
+                });
+                
+                const startTime = Date.now();
+                const response = await fetch(`${baseUrl}/api/appointments/optimized?${params}`, {
+                    method: 'HEAD'
+                });
+                const clientTime = Date.now() - startTime;
+                
+                const slotStatus = response.headers.get('X-Slot-Status');
+                const serverTime = response.headers.get('X-Check-Time');
+                
+                let statusClass = 'test-section';
+                let statusIcon = '❓';
+                let statusText = 'Unknown';
+                
+                if (response.status === 200) {
+                    statusClass += ' performance-metrics';
+                    statusIcon = '✅';
+                    statusText = 'Available';
+                } else if (response.status === 409) {
+                    statusClass += ' error';
+                    statusIcon = '❌';
+                    statusText = 'Unavailable (Booked)';
+                }
+                
+                results.innerHTML = `
+                    <div class="${statusClass}">
+                        <h3>${statusIcon} Slot Availability Test Results</h3>
+                        <p><strong>Doctor ID:</strong> ${doctorId}</p>
+                        <p><strong>Date:</strong> ${date}</p>
+                        <p><strong>Time:</strong> ${time}</p>
+                        <p><strong>Status:</strong> ${statusText}</p>
+                        <p><strong>Server Time:</strong> ${serverTime}ms</p>
+                        <p><strong>Client Time:</strong> ${clientTime}ms</p>
+                        <p><strong>Index Used:</strong> doctorId_date_time_status_idx</p>
+                    </div>
+                `;
+            } catch (error) {
+                results.innerHTML = `<div class="test-section error"><h3>❌ Network Error</h3><p>${error.message}</p></div>`;
+            }
+        }
+        
+        function displayQueryResults(data, clientTime) {
+            const { appointments, meta } = data;
+            const results = document.getElementById('results');
+            
+            let html = `
+                <div class="test-section performance-metrics">
+                    <h3>⚡ Performance Metrics</h3>
+                    <p><strong>Query Type:</strong> ${meta.queryType}</p>
+                    <p><strong>Server Execution Time:</strong> ${meta.executionTime}ms</p>
+                    <p><strong>Client Request Time:</strong> ${clientTime}ms</p>
+                    <p><strong>Results Count:</strong> ${meta.resultCount}</p>
+                    <p><strong>Index Used:</strong> ${meta.indexUsed}</p>
+                </div>
+                
+                <div class="test-section">
+                    <h3>📋 Appointments Results (${appointments.length})</h3>
+            `;
+            
+            if (appointments.length === 0) {
+                html += '<p>No appointments found with the current filters.</p>';
+            } else {
+                appointments.forEach(appointment => {
+                    const statusClass = `status-${appointment.status}`;
+                    html += `
+                        <div class="appointment-card">
+                            <div style="display: flex; justify-content: between; align-items: start; gap: 15px;">
+                                <div style="flex: 1;">
+                                    <div style="margin-bottom: 10px;">
+                                        <span class="status-badge ${statusClass}">${appointment.status.toUpperCase()}</span>
+                                        ${appointment.appointmentKey ? `<span style="margin-left: 10px; font-family: monospace; font-size: 12px; color: #666;">Key: ${appointment.appointmentKey}</span>` : ''}
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <p><strong>🩺 Doctor:</strong> ${appointment.doctorName || 'Unknown'}</p>
+                                            <p><strong>👤 Patient:</strong> ${appointment.patientName || 'Unknown'}</p>
+                                        </div>
+                                        <div>
+                                            <p><strong>📅 Date:</strong> ${appointment.date}</p>
+                                            <p><strong>🕐 Time:</strong> ${appointment.time || appointment.sessionStartTime}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    ${appointment.Adrees ? `<p style="margin-top: 10px; font-size: 14px; color: #666;"><strong>📍 Address:</strong> ${appointment.Adrees}</p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
+            
+            // Add raw JSON for debugging
+            html += `
+                <div class="test-section">
+                    <h3>🔍 Raw API Response</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+            
+            results.innerHTML = html;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-fill today's date
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>

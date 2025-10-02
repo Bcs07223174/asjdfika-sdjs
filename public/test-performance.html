@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - Doctor API & Live Notifications</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px;
+        }
+        .status.fast { background: #28a745; }
+        .status.medium { background: #ffc107; color: #000; }
+        .status.slow { background: #dc3545; }
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .doctor-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 5px;
+            display: inline-block;
+            width: 200px;
+            vertical-align: top;
+        }
+        .notification-item {
+            border-left: 4px solid #007bff;
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            display: inline-block;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Performance Test Dashboard</h1>
+    <p>Testing optimized Doctor API and Live Notification System</p>
+
+    <!-- Doctor API Performance Test -->
+    <div class="test-container">
+        <h2>🏥 Doctor API Performance Test</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="doctor-time">-</div>
+                <div class="metric-label">Response Time (ms)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="doctor-count">-</div>
+                <div class="metric-label">Doctors Loaded</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="doctor-status">-</div>
+                <div class="metric-label">Performance Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="doctor-cache">-</div>
+                <div class="metric-label">Cache Status</div>
+            </div>
+        </div>
+        <button onclick="testDoctorAPI()">🔄 Test Doctor API</button>
+        <button onclick="testDoctorAPIMultiple()">⚡ Stress Test (10x)</button>
+        <button onclick="clearDoctorResults()">🗑️ Clear</button>
+        <div id="doctor-results"></div>
+    </div>
+
+    <!-- Live Notification System Test -->
+    <div class="test-container">
+        <h2>🔔 Live Notification System Test</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="notification-time">-</div>
+                <div class="metric-label">Fetch Time (ms)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="notification-count">-</div>
+                <div class="metric-label">Notifications</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="live-status">
+                    <span class="live-indicator"></span>Stopped
+                </div>
+                <div class="metric-label">Live Updates</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="update-frequency">-</div>
+                <div class="metric-label">Update Frequency</div>
+            </div>
+        </div>
+        <button onclick="startLiveNotifications()">🟢 Start Live Updates</button>
+        <button onclick="stopLiveNotifications()">🔴 Stop Live Updates</button>
+        <button onclick="testNotificationAPI()">🔄 Test Once</button>
+        <div id="notification-results"></div>
+    </div>
+
+    <!-- Live Performance Log -->
+    <div class="test-container">
+        <h2>📊 Live Performance Log</h2>
+        <div class="log" id="performance-log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let liveInterval = null;
+        let testCount = 0;
+
+        function log(message) {
+            const logElement = document.getElementById('performance-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function getPerformanceStatus(time) {
+            if (time < 50) return { text: 'FAST', class: 'fast' };
+            if (time < 100) return { text: 'GOOD', class: 'medium' };
+            if (time < 200) return { text: 'SLOW', class: 'medium' };
+            return { text: 'VERY SLOW', class: 'slow' };
+        }
+
+        async function testDoctorAPI() {
+            const startTime = performance.now();
+            try {
+                log('🏥 Testing Doctor API...');
+                
+                const response = await fetch('/api/doctors/optimized?limit=6');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const status = getPerformanceStatus(responseTime);
+                
+                document.getElementById('doctor-time').textContent = responseTime;
+                document.getElementById('doctor-count').textContent = data.doctors?.length || 0;
+                document.getElementById('doctor-status').innerHTML = `<span class="status ${status.class}">${status.text}</span>`;
+                document.getElementById('doctor-cache').textContent = response.headers.get('etag') ? 'ENABLED' : 'DISABLED';
+                
+                // Display results
+                const resultsDiv = document.getElementById('doctor-results');
+                resultsDiv.innerHTML = `
+                    <h4>📋 Latest Results (${responseTime}ms)</h4>
+                    ${data.doctors?.map(doctor => `
+                        <div class="doctor-card">
+                            <strong>${doctor.name}</strong><br>
+                            <small>${doctor.specialty || doctor.specialization}</small><br>
+                            <small>Fee: ${doctor.doctor_fee || doctor.Discount || 'N/A'}</small>
+                        </div>
+                    `).join('') || '<p>No doctors found</p>'}
+                `;
+                
+                log(`✅ Doctor API: ${responseTime}ms (${data.doctors?.length || 0} doctors) - ${status.text}`);
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                log(`❌ Doctor API Error: ${error.message} (${responseTime}ms)`);
+                document.getElementById('doctor-status').innerHTML = '<span class="status slow">ERROR</span>';
+            }
+        }
+
+        async function testDoctorAPIMultiple() {
+            log('⚡ Starting stress test (10 requests)...');
+            const times = [];
+            
+            for (let i = 0; i < 10; i++) {
+                const startTime = performance.now();
+                try {
+                    const response = await fetch('/api/doctors/optimized?limit=6');
+                    const endTime = performance.now();
+                    const responseTime = Math.round(endTime - startTime);
+                    times.push(responseTime);
+                    log(`Request ${i + 1}/10: ${responseTime}ms`);
+                } catch (error) {
+                    log(`Request ${i + 1}/10: ERROR - ${error.message}`);
+                }
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            const avgTime = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+            const minTime = Math.min(...times);
+            const maxTime = Math.max(...times);
+            
+            log(`📊 Stress Test Complete: Avg=${avgTime}ms, Min=${minTime}ms, Max=${maxTime}ms`);
+        }
+
+        async function testNotificationAPI() {
+            const startTime = performance.now();
+            try {
+                log('🔔 Testing Notification API...');
+                
+                const response = await fetch('/api/notifications');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                document.getElementById('notification-time').textContent = responseTime;
+                document.getElementById('notification-count').textContent = data.notifications?.length || 0;
+                
+                // Display results
+                const resultsDiv = document.getElementById('notification-results');
+                resultsDiv.innerHTML = `
+                    <h4>📬 Latest Notifications (${responseTime}ms)</h4>
+                    ${data.notifications?.slice(0, 5).map(notification => `
+                        <div class="notification-item">
+                            <strong>${notification.title}</strong><br>
+                            <small>${notification.message}</small><br>
+                            <small>Type: ${notification.type}</small>
+                        </div>
+                    `).join('') || '<p>No notifications found</p>'}
+                `;
+                
+                log(`✅ Notification API: ${responseTime}ms (${data.notifications?.length || 0} notifications)`);
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                log(`❌ Notification API Error: ${error.message} (${responseTime}ms)`);
+            }
+        }
+
+        function startLiveNotifications() {
+            if (liveInterval) {
+                clearInterval(liveInterval);
+            }
+            
+            document.getElementById('live-status').innerHTML = '<span class="live-indicator"></span>RUNNING';
+            document.getElementById('update-frequency').textContent = 'Every 3s';
+            log('🟢 Live notifications started (3s interval)');
+            
+            // Immediate first test
+            testNotificationAPI();
+            
+            // Set up live updates
+            liveInterval = setInterval(() => {
+                testNotificationAPI();
+            }, 3000);
+        }
+
+        function stopLiveNotifications() {
+            if (liveInterval) {
+                clearInterval(liveInterval);
+                liveInterval = null;
+            }
+            
+            document.getElementById('live-status').innerHTML = '<span style="width: 10px; height: 10px; border-radius: 50%; background: #dc3545; display: inline-block; margin-right: 10px;"></span>STOPPED';
+            document.getElementById('update-frequency').textContent = '-';
+            log('🔴 Live notifications stopped');
+        }
+
+        function clearDoctorResults() {
+            document.getElementById('doctor-results').innerHTML = '';
+            document.getElementById('doctor-time').textContent = '-';
+            document.getElementById('doctor-count').textContent = '-';
+            document.getElementById('doctor-status').textContent = '-';
+            document.getElementById('doctor-cache').textContent = '-';
+        }
+
+        function clearLog() {
+            document.getElementById('performance-log').innerHTML = '';
+        }
+
+        // Initialize
+        log('🚀 Performance Test Dashboard Initialized');
+        log('💡 Click "Test Doctor API" to check the optimized performance');
+        log('💡 Click "Start Live Updates" to test WhatsApp-style notifications');
+    </script>
+</body>
+</html>

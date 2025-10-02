@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor API Diagnostic</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status { 
+            padding: 10px 15px; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            font-weight: bold; 
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .code {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏥 Doctor API Diagnostic Tool</h1>
+    <p>This tool will help diagnose why doctors are not loading for guest users.</p>
+
+    <!-- Regular Doctor API Test -->
+    <div class="test-section">
+        <h2>🔍 Regular Doctor API Test (/api/doctors)</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="regular-status">-</div>
+                <div class="metric-label">Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="regular-time">-</div>
+                <div class="metric-label">Response Time</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="regular-count">-</div>
+                <div class="metric-label">Doctors Found</div>
+            </div>
+        </div>
+        <button onclick="testRegularAPI()">🔄 Test Regular API</button>
+        <div id="regular-output"></div>
+    </div>
+
+    <!-- Optimized Doctor API Test -->
+    <div class="test-section">
+        <h2>⚡ Optimized Doctor API Test (/api/doctors/optimized)</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="optimized-status">-</div>
+                <div class="metric-label">Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="optimized-time">-</div>
+                <div class="metric-label">Response Time</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="optimized-count">-</div>
+                <div class="metric-label">Doctors Found</div>
+            </div>
+        </div>
+        <button onclick="testOptimizedAPI()">🔄 Test Optimized API</button>
+        <div id="optimized-output"></div>
+    </div>
+
+    <!-- Database Verification -->
+    <div class="test-section">
+        <h2>🗄️ Database Verification Test (/api/verify-db)</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="db-status">-</div>
+                <div class="metric-label">Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="db-collections">-</div>
+                <div class="metric-label">Collections</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="db-doctors">-</div>
+                <div class="metric-label">Total Doctors</div>
+            </div>
+        </div>
+        <button onclick="testDatabase()">🔄 Test Database</button>
+        <div id="db-output"></div>
+    </div>
+
+    <!-- Authentication Test -->
+    <div class="test-section">
+        <h2>🔐 Guest Access Test</h2>
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="auth-status">-</div>
+                <div class="metric-label">Guest Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="auth-storage">-</div>
+                <div class="metric-label">Local Storage</div>
+            </div>
+        </div>
+        <button onclick="testGuestAccess()">🔄 Test Guest Access</button>
+        <div id="auth-output"></div>
+    </div>
+
+    <!-- Run All Tests -->
+    <div class="test-section">
+        <h2>🚀 Complete Diagnostic</h2>
+        <button onclick="runAllTests()" style="background: #28a745; padding: 15px 30px; font-size: 16px;">
+            🔍 Run All Tests
+        </button>
+        <button onclick="clearAllResults()" style="background: #dc3545;">
+            🗑️ Clear Results
+        </button>
+    </div>
+
+    <script>
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const statusClass = type === 'success' ? 'success' : 
+                               type === 'error' ? 'error' : 
+                               type === 'warning' ? 'warning' : 'info';
+            
+            container.innerHTML += `<div class="status ${statusClass}">${message}</div>`;
+        }
+
+        function updateMetric(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+
+        async function testRegularAPI() {
+            const startTime = performance.now();
+            try {
+                log('regular-output', '🔄 Testing regular doctor API...', 'info');
+                
+                const response = await fetch('/api/doctors');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updateMetric('regular-time', responseTime + 'ms');
+                updateMetric('regular-status', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const doctorsArray = Array.isArray(data) ? data : (data.doctors || []);
+                
+                updateMetric('regular-count', doctorsArray.length);
+                
+                log('regular-output', `✅ Success: Found ${doctorsArray.length} doctors in ${responseTime}ms`, 'success');
+                
+                // Show sample data
+                const sampleData = {
+                    responseTime: responseTime + 'ms',
+                    status: response.status,
+                    isArray: Array.isArray(data),
+                    doctorCount: doctorsArray.length,
+                    sampleDoctor: doctorsArray[0] || null,
+                    headers: {
+                        contentType: response.headers.get('content-type'),
+                        cacheControl: response.headers.get('cache-control')
+                    }
+                };
+                
+                const outputDiv = document.getElementById('regular-output');
+                outputDiv.innerHTML += `<div class="code">${JSON.stringify(sampleData, null, 2)}</div>`;
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updateMetric('regular-time', responseTime + 'ms');
+                updateMetric('regular-status', 'ERROR');
+                updateMetric('regular-count', '0');
+                
+                log('regular-output', `❌ Error: ${error.message}`, 'error');
+                const outputDiv = document.getElementById('regular-output');
+                outputDiv.innerHTML += `<div class="code">Error Details: ${error.message}\nTime: ${responseTime}ms</div>`;
+            }
+        }
+
+        async function testOptimizedAPI() {
+            const startTime = performance.now();
+            try {
+                log('optimized-output', '⚡ Testing optimized doctor API...', 'info');
+                
+                const response = await fetch('/api/doctors/optimized');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updateMetric('optimized-time', responseTime + 'ms');
+                updateMetric('optimized-status', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                const doctorsArray = data.doctors || [];
+                
+                updateMetric('optimized-count', doctorsArray.length);
+                
+                log('optimized-output', `✅ Success: Found ${doctorsArray.length} doctors in ${responseTime}ms`, 'success');
+                
+                // Show sample data
+                const sampleData = {
+                    responseTime: responseTime + 'ms',
+                    status: response.status,
+                    doctorCount: doctorsArray.length,
+                    queryType: data.meta?.queryType,
+                    pagination: data.pagination,
+                    sampleDoctor: doctorsArray[0] || null,
+                    headers: {
+                        contentType: response.headers.get('content-type'),
+                        etag: response.headers.get('etag'),
+                        queryTime: response.headers.get('x-query-time')
+                    }
+                };
+                
+                const outputDiv = document.getElementById('optimized-output');
+                outputDiv.innerHTML += `<div class="code">${JSON.stringify(sampleData, null, 2)}</div>`;
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                updateMetric('optimized-time', responseTime + 'ms');
+                updateMetric('optimized-status', 'ERROR');
+                updateMetric('optimized-count', '0');
+                
+                log('optimized-output', `❌ Error: ${error.message}`, 'error');
+                const outputDiv = document.getElementById('optimized-output');
+                outputDiv.innerHTML += `<div class="code">Error Details: ${error.message}\nTime: ${responseTime}ms</div>`;
+            }
+        }
+
+        async function testDatabase() {
+            try {
+                log('db-output', '🗄️ Testing database connection...', 'info');
+                
+                const response = await fetch('/api/verify-db');
+                
+                updateMetric('db-status', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                updateMetric('db-collections', data.collections?.length || 0);
+                updateMetric('db-doctors', data.stats?.totalDoctors || 0);
+                
+                log('db-output', `✅ Database connected: ${data.collections?.length || 0} collections, ${data.stats?.totalDoctors || 0} doctors`, 'success');
+                
+                const outputDiv = document.getElementById('db-output');
+                outputDiv.innerHTML += `<div class="code">${JSON.stringify(data, null, 2)}</div>`;
+                
+            } catch (error) {
+                updateMetric('db-status', 'ERROR');
+                updateMetric('db-collections', '0');
+                updateMetric('db-doctors', '0');
+                
+                log('db-output', `❌ Database Error: ${error.message}`, 'error');
+                const outputDiv = document.getElementById('db-output');
+                outputDiv.innerHTML += `<div class="code">Error Details: ${error.message}</div>`;
+            }
+        }
+
+        function testGuestAccess() {
+            try {
+                log('auth-output', '🔐 Testing guest access...', 'info');
+                
+                // Check if user is logged in
+                const patientData = localStorage.getItem('patient_user');
+                const isLoggedIn = patientData !== null;
+                
+                updateMetric('auth-status', isLoggedIn ? 'LOGGED IN' : 'GUEST');
+                updateMetric('auth-storage', patientData ? 'HAS DATA' : 'EMPTY');
+                
+                if (isLoggedIn) {
+                    log('auth-output', '✅ User is logged in - testing authenticated access', 'success');
+                    const userData = JSON.parse(patientData);
+                    const outputDiv = document.getElementById('auth-output');
+                    outputDiv.innerHTML += `<div class="code">User Data: ${JSON.stringify(userData, null, 2)}</div>`;
+                } else {
+                    log('auth-output', '✅ User is guest - testing guest access', 'warning');
+                    log('auth-output', '💡 Guest users should still be able to view doctors', 'info');
+                }
+                
+                // Test browser environment
+                const browserInfo = {
+                    userAgent: navigator.userAgent,
+                    cookies: document.cookie,
+                    localStorage: !!window.localStorage,
+                    sessionStorage: !!window.sessionStorage,
+                    fetch: !!window.fetch
+                };
+                
+                const outputDiv = document.getElementById('auth-output');
+                outputDiv.innerHTML += `<div class="code">Browser Info: ${JSON.stringify(browserInfo, null, 2)}</div>`;
+                
+            } catch (error) {
+                updateMetric('auth-status', 'ERROR');
+                updateMetric('auth-storage', 'ERROR');
+                
+                log('auth-output', `❌ Guest Access Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function runAllTests() {
+            log('auth-output', '🚀 Running complete diagnostic...', 'info');
+            
+            // Clear previous results
+            clearAllResults();
+            
+            // Run tests sequentially
+            await testGuestAccess();
+            await testDatabase();
+            await testRegularAPI();
+            await testOptimizedAPI();
+            
+            log('auth-output', '✅ All tests completed!', 'success');
+        }
+
+        function clearAllResults() {
+            const outputContainers = ['regular-output', 'optimized-output', 'db-output', 'auth-output'];
+            outputContainers.forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            // Reset metrics
+            const metrics = [
+                'regular-status', 'regular-time', 'regular-count',
+                'optimized-status', 'optimized-time', 'optimized-count',
+                'db-status', 'db-collections', 'db-doctors',
+                'auth-status', 'auth-storage'
+            ];
+            metrics.forEach(id => {
+                document.getElementById(id).textContent = '-';
+            });
+        }
+
+        // Auto-run guest access test on page load
+        window.addEventListener('load', () => {
+            testGuestAccess();
+        });
+    </script>
+</body>
+</html>
