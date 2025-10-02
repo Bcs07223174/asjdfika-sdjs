@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Verification - ClinicCare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">API Verification Results</h1>
+        
+        <div class="grid grid-cols-1 gap-6">
+            <!-- Database Verification -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Database Verification</h2>
+                <button id="verifyDb" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">
+                    Verify Database
+                </button>
+                <div id="dbVerifyResult" class="hidden"></div>
+            </div>
+
+            <!-- All Doctors Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">All Doctors API Test</h2>
+                <button id="getAllDoctors" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mb-4">
+                    Get All Doctors
+                </button>
+                <div id="allDoctorsResult" class="hidden"></div>
+            </div>
+
+            <!-- Search by ID Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Search by Doctor ID</h2>
+                <input type="text" id="searchId" placeholder="Enter Doctor ID" value="68c1b0a8290666380fd5fa35" class="border rounded px-3 py-2 w-full mb-2">
+                <button id="searchById" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 mb-4">
+                    Search by ID
+                </button>
+                <div id="searchIdResult" class="hidden"></div>
+            </div>
+
+            <!-- Search by Name Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Search by Name</h2>
+                <input type="text" id="searchName" placeholder="Enter Doctor Name" value="Roy" class="border rounded px-3 py-2 w-full mb-2">
+                <button id="searchByName" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mb-4">
+                    Search by Name
+                </button>
+                <div id="searchNameResult" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper function to display results
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('hidden');
+            element.className = `mt-4 p-4 rounded ${isError ? 'bg-red-100 border border-red-300' : 'bg-green-100 border border-green-300'}`;
+            
+            if (typeof data === 'object') {
+                element.innerHTML = `<pre class="text-sm overflow-x-auto whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                element.innerHTML = `<p class="text-sm">${data}</p>`;
+            }
+        }
+
+        // Verify Database
+        document.getElementById('verifyDb').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/verify-db');
+                const data = await response.json();
+                showResult('dbVerifyResult', data, !response.ok);
+            } catch (error) {
+                showResult('dbVerifyResult', { error: error.message }, true);
+            }
+        });
+
+        // Get All Doctors
+        document.getElementById('getAllDoctors').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/doctors');
+                const data = await response.json();
+                showResult('allDoctorsResult', data, !response.ok);
+            } catch (error) {
+                showResult('allDoctorsResult', { error: error.message }, true);
+            }
+        });
+
+        // Search by ID
+        document.getElementById('searchById').addEventListener('click', async () => {
+            try {
+                const id = document.getElementById('searchId').value;
+                const response = await fetch(`/api/doctors?id=${encodeURIComponent(id)}`);
+                const data = await response.json();
+                showResult('searchIdResult', data, !response.ok);
+            } catch (error) {
+                showResult('searchIdResult', { error: error.message }, true);
+            }
+        });
+
+        // Search by Name
+        document.getElementById('searchByName').addEventListener('click', async () => {
+            try {
+                const name = document.getElementById('searchName').value;
+                const response = await fetch(`/api/doctors?search=${encodeURIComponent(name)}`);
+                const data = await response.json();
+                showResult('searchNameResult', data, !response.ok);
+            } catch (error) {
+                showResult('searchNameResult', { error: error.message }, true);
+            }
+        });
+    </script>
+</body>
+</html>

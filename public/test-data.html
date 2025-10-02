@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Verification - ClinicCare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Data Fetching Verification</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Collections Overview -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Collections Overview</h2>
+                <button id="testCollections" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">
+                    Test All Collections
+                </button>
+                <div id="collectionsResult" class="hidden"></div>
+            </div>
+
+            <!-- Doctors Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Doctors Collection</h2>
+                <button id="testDoctors" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mb-4">
+                    Test Doctors API
+                </button>
+                <div id="doctorsResult" class="hidden"></div>
+            </div>
+
+            <!-- Appointments Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Appointments Test</h2>
+                <input type="text" id="patientId" placeholder="Patient ID" value="sample-patient-id" class="border rounded px-3 py-2 w-full mb-2">
+                <button id="testAppointments" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 mb-4">
+                    Test Appointments API
+                </button>
+                <div id="appointmentsResult" class="hidden"></div>
+            </div>
+
+            <!-- Doctor Schedule Test -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Doctor Schedule Test</h2>
+                <input type="text" id="doctorIdSchedule" placeholder="Doctor ID" value="68c1b0a8290666380fd5fa35" class="border rounded px-3 py-2 w-full mb-2">
+                <button id="testSchedule" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-4">
+                    Test Schedule API
+                </button>
+                <div id="scheduleResult" class="hidden"></div>
+            </div>
+
+            <!-- Search Test -->
+            <div class="bg-white rounded-lg shadow-md p-6 md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4">Doctor Search Test</h2>
+                <div class="flex gap-4 mb-4">
+                    <input type="text" id="searchTerm" placeholder="Search term" value="Dr. Roy" class="border rounded px-3 py-2 flex-1">
+                    <button id="testSearch" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        Test Search
+                    </button>
+                </div>
+                <div id="searchResult" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Helper function to display results
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('hidden');
+            element.className = `mt-4 p-4 rounded max-h-96 overflow-y-auto ${isError ? 'bg-red-100 border border-red-300' : 'bg-green-100 border border-green-300'}`;
+            
+            if (typeof data === 'object') {
+                element.innerHTML = `<pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            } else {
+                element.innerHTML = `<p class="text-sm">${data}</p>`;
+            }
+        }
+
+        // Test All Collections
+        document.getElementById('testCollections').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/test-collections');
+                const data = await response.json();
+                showResult('collectionsResult', data, !response.ok);
+            } catch (error) {
+                showResult('collectionsResult', { error: error.message }, true);
+            }
+        });
+
+        // Test Doctors
+        document.getElementById('testDoctors').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/doctors');
+                const data = await response.json();
+                showResult('doctorsResult', data, !response.ok);
+            } catch (error) {
+                showResult('doctorsResult', { error: error.message }, true);
+            }
+        });
+
+        // Test Appointments
+        document.getElementById('testAppointments').addEventListener('click', async () => {
+            try {
+                const patientId = document.getElementById('patientId').value;
+                const response = await fetch(`/api/appointments?patientId=${encodeURIComponent(patientId)}`);
+                const data = await response.json();
+                showResult('appointmentsResult', data, !response.ok);
+            } catch (error) {
+                showResult('appointmentsResult', { error: error.message }, true);
+            }
+        });
+
+        // Test Schedule
+        document.getElementById('testSchedule').addEventListener('click', async () => {
+            try {
+                const doctorId = document.getElementById('doctorIdSchedule').value;
+                const response = await fetch(`/api/schedule/${doctorId}`);
+                const data = await response.json();
+                showResult('scheduleResult', data, !response.ok);
+            } catch (error) {
+                showResult('scheduleResult', { error: error.message }, true);
+            }
+        });
+
+        // Test Search
+        document.getElementById('testSearch').addEventListener('click', async () => {
+            try {
+                const searchTerm = document.getElementById('searchTerm').value;
+                const response = await fetch(`/api/doctors?search=${encodeURIComponent(searchTerm)}`);
+                const data = await response.json();
+                showResult('searchResult', data, !response.ok);
+            } catch (error) {
+                showResult('searchResult', { error: error.message }, true);
+            }
+        });
+    </script>
+</body>
+</html>

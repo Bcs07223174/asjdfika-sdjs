@@ -1,0 +1,572 @@
+"use client"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar, Clock, Key, Loader2, RefreshCw, Star, Stethoscope, User } from "lucide-react"
+import { useEffect, useState } from "react"
+
+interface Appointment {
+  _id: string
+  patient_id?: string  // Database field name
+  patientId?: string   // Alternative field name
+  doctor_id?: string   // Database field name
+  doctorId?: string    // Alternative field name
+  date: string
+  time?: string
+  sessionStartTime?: string  // Database field name
+  sessionEndTime?: string    // Database field name
+  status: "confirmed" | "pending" | "cancelled"
+  doctorName?: string
+  reason?: string
+  day_status?: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface Doctor {
+  _id: string
+  name: string
+  specialization: string
+  experience: string
+  rating: number
+  image?: string
+}
+
+interface Schedule {
+  _id?: string
+  doctorId: string
+  days: {
+    dayOfWeek: string
+    isOffDay: boolean
+    morningStart: string | null
+    morningEnd: string | null
+    eveningStart: string | null
+    eveningEnd: string | null
+    slotduration: string
+  }[]
+}
+
+export default function BookedAppointments() {
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [appointmentRequests, setAppointmentRequests] = useState<any[]>([])
+  const [doctors, setDoctors] = useState<{ [key: string]: Doctor }>({})
+  const [schedules, setSchedules] = useState<{ [key: string]: Schedule }>({})
+  const [loading, setLoading] = useState(true)
+  const [currentPatientId, setCurrentPatientId] = useState("")
+  const [searchDoctorId, setSearchDoctorId] = useState("")
+
+  // Auto-search for current patient's appointments on component mount
+  useEffect(() => {
+    autoFindCurrentPatientAppointments()
+  }, [])
+
+  const autoFindCurrentPatientAppointments = async () => {
+    try {
+      setLoading(true)
+      console.log("Auto-searching for current patient's appointments...")
+      
+      // First, fetch all patients from the Patients collection to find current patient
+      const patientsResponse = await fetch('/api/patients')
+      
+      if (patientsResponse.ok) {
+        const patientsData = await patientsResponse.json()
+        console.log("Found patients:", patientsData)
+        
+        if (patientsData.length > 0) {
+          // For now, use the first patient as current patient
+          // In a real app, this would come from authentication/session
+          const currentPatient = patientsData[0]
+          setCurrentPatientId(currentPatient._id)
+          
+          console.log("Current patient ID:", currentPatient._id)
+          
+          // Fetch appointments for current patient
+          await fetchCurrentPatientAppointments(currentPatient._id)
+        }
+      }
+    } catch (error) {
+      console.error("Error in auto search:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCurrentPatientAppointments = async (patientId: string) => {
+    try {
+      console.log(`Fetching appointments for current patient: ${patientId}`)
+      
+      // Fetch confirmed appointments
+      const appointmentsResponse = await fetch(`/api/appointments?patientId=${patientId}`)
+      let appointmentsData: Appointment[] = []
+      
+      if (appointmentsResponse.ok) {
+        appointmentsData = await appointmentsResponse.json()
+        console.log(`Found ${appointmentsData.length} confirmed appointments`)
+      }
+      
+      // Fetch pending appointment requests
+      const requestsResponse = await fetch(`/api/appointment-requests?patientId=${patientId}`)
+      let requestsData: any[] = []
+      
+      if (requestsResponse.ok) {
+        requestsData = await requestsResponse.json()
+        console.log(`Found ${requestsData.length} appointment requests`)
+      }
+      
+      setAppointments(appointmentsData)
+      setAppointmentRequests(requestsData)
+      
+      // Get unique doctor IDs from both appointments and requests
+      const doctorIds = [...new Set([
+        ...appointmentsData.map((apt: Appointment) => apt.doctor_id || apt.doctorId),
+        ...requestsData.map((req: any) => req.doctorId)
+      ].filter(Boolean))]
+      
+      if (doctorIds.length > 0) {
+        await fetchDoctorsDetails(doctorIds as string[])
+        await fetchDoctorsSchedules(doctorIds as string[])
+      }
+    } catch (error) {
+      console.error("Error fetching current patient appointments:", error)
+    }
+  }
+
+  const fetchDoctorsDetails = async (doctorIds: string[]) => {
+    const doctorsData: { [key: string]: Doctor } = {}
+    
+    for (const doctorId of doctorIds) {
+      try {
+        const response = await fetch(`/api/doctors?search=${doctorId}`)
+        if (response.ok) {
+          const doctors = await response.json()
+          const doctor = doctors.find((d: Doctor) => d._id === doctorId)
+          if (doctor) {
+            doctorsData[doctorId] = doctor
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching doctor ${doctorId}:`, error)
+      }
+    }
+    
+    setDoctors(doctorsData)
+  }
+
+  const fetchDoctorsSchedules = async (doctorIds: string[]) => {
+    const schedulesData: { [key: string]: Schedule } = {}
+    
+    for (const doctorId of doctorIds) {
+      try {
+        const response = await fetch(`/api/schedule/${doctorId}`)
+        if (response.ok) {
+          const schedule = await response.json()
+          schedulesData[doctorId] = schedule
+        }
+      } catch (error) {
+        console.error(`Error fetching schedule for doctor ${doctorId}:`, error)
+      }
+    }
+    
+    setSchedules(schedulesData)
+  }
+
+  const fetchDoctorScheduleById = async (doctorId: string) => {
+    if (!doctorId) return
+    
+    try {
+      setLoading(true)
+      
+      // Fetch doctor details
+      const doctorResponse = await fetch(`/api/doctors?search=${doctorId}`)
+      if (doctorResponse.ok) {
+        const doctorsData = await doctorResponse.json()
+        const doctor = doctorsData.find((d: Doctor) => d._id === doctorId)
+        if (doctor) {
+          setDoctors(prev => ({ ...prev, [doctorId]: doctor }))
+        }
+      }
+      
+      // Fetch doctor schedule
+      const scheduleResponse = await fetch(`/api/schedule/${doctorId}`)
+      if (scheduleResponse.ok) {
+        const schedule = await scheduleResponse.json()
+        setSchedules(prev => ({ ...prev, [doctorId]: schedule }))
+        console.log("Schedule fetched from doctor_schedules collection:", schedule)
+      }
+    } catch (error) {
+      console.error("Error fetching doctor schedule:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  const formatTime = (appointment: Appointment) => {
+    if (appointment.sessionStartTime && appointment.sessionEndTime) {
+      return `${appointment.sessionStartTime} - ${appointment.sessionEndTime}`
+    }
+    return appointment.time || "Time not specified"
+  }
+
+  const getDoctorId = (appointment: Appointment) => {
+    return appointment.doctor_id || appointment.doctorId || "Unknown"
+  }
+
+  const getPatientId = (appointment: Appointment) => {
+    return appointment.patient_id || appointment.patientId || "Unknown"
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-100 text-green-800"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getDaySchedule = (schedule: Schedule, dayOfWeek: string) => {
+    if (!schedule.days) return null
+    return schedule.days.find(day => day.dayOfWeek === dayOfWeek)
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
+          <p className="text-gray-600 mt-1">Manage your healthcare appointments</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {currentPatientId && (
+            <Badge className="bg-sky-100 text-sky-800 px-3 py-1">
+              Patient: {currentPatientId.slice(-8)}
+            </Badge>
+          )}
+          <Button 
+            onClick={autoFindCurrentPatientAppointments}
+            className="bg-sky-600 hover:bg-sky-700 shadow-lg"
+            size="sm"
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+        {/* Current Patient Info */}
+        {currentPatientId && (
+          <Card className="bg-white shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-sky-600 to-blue-600 text-white">
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Patient Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Patient ID</p>
+                  <p className="font-mono font-semibold text-gray-900">{currentPatientId}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Status</p>
+                  <Badge className="bg-green-100 text-green-800">Active Patient</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <Card className="bg-white shadow-lg">
+            <CardContent className="p-12 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-sky-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Loading Your Appointments</h3>
+              <p className="text-gray-600">Please wait while we fetch your appointment data...</p>
+            </CardContent>
+          </Card>
+        )}      
+        
+        {/* Confirmed Appointments List */}
+        {!loading && appointments.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <Stethoscope className="w-4 h-4 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Confirmed Appointments ({appointments.length})
+              </h2>
+            </div>
+            <div className="grid gap-4">
+              {appointments.map((appointment) => {
+                const doctorId = getDoctorId(appointment)
+                const patientId = getPatientId(appointment)
+                const doctor = doctors[doctorId]
+                return (
+                  <Card key={appointment._id} className="bg-white shadow-lg border-0 hover:shadow-xl transition-shadow duration-200">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                              <Stethoscope className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg text-gray-900">
+                                {doctor?.name || appointment.doctorName || "Doctor"}
+                              </h3>
+                              {doctor?.specialization && (
+                                <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50">
+                                  {doctor.specialization}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Calendar className="h-4 w-4" />
+                                <span className="font-medium">{formatDate(appointment.date)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Clock className="h-4 w-4" />
+                                <span className="font-medium">{formatTime(appointment)}</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {appointment.reason && (
+                                <div className="text-sm">
+                                  <span className="text-gray-500">Reason:</span>
+                                  <span className="ml-2 font-medium text-gray-800">{appointment.reason}</span>
+                                </div>
+                              )}
+                              {doctor?.rating && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                                  <span className="text-sm font-medium">{doctor.rating}/5</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-3">
+                          <Badge className="bg-green-100 text-green-800 px-3 py-1">
+                            CONFIRMED
+                          </Badge>
+                          <div className="text-xs text-gray-500 text-right">
+                            <p>ID: {appointment._id.slice(-8)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+        </div>
+      )}
+
+        {/* Pending Appointment Requests List */}
+        {!loading && appointmentRequests.length > 0 && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                <Clock className="w-4 h-4 text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Pending Requests ({appointmentRequests.length})
+              </h2>
+            </div>
+            <div className="grid gap-4">
+              {appointmentRequests.map((request) => {
+                const doctor = doctors[request.doctorId]
+                return (
+                  <Card key={request._id} className="bg-gradient-to-r from-yellow-50 to-orange-50 shadow-lg border-0 hover:shadow-xl transition-shadow duration-200">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                              <Clock className="w-6 h-6 text-yellow-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg text-gray-900">
+                                {doctor?.name || request.doctorName || "Doctor"}
+                              </h3>
+                              <Badge className="bg-yellow-100 text-yellow-800">
+                                PENDING REQUEST
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Calendar className="h-4 w-4" />
+                                <span className="font-medium">{formatDate(request.date)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Clock className="h-4 w-4" />
+                                <span className="font-medium">{request.time}</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Key className="h-4 w-4 text-yellow-600" />
+                                <span className="font-mono font-bold text-yellow-700">
+                                  {request.appointmentKey}
+                                </span>
+                              </div>
+                              {doctor?.specialization && (
+                                <div className="text-sm">
+                                  <span className="text-gray-500">Specialization:</span>
+                                  <span className="ml-2 font-medium text-gray-800">{doctor.specialization}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-sm text-gray-600">
+                            <span className="text-gray-500">Created:</span>
+                            <span className="ml-2 font-medium">{new Date(request.createdAt).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-3">
+                          <Badge className="bg-yellow-100 text-yellow-800 px-3 py-1">
+                            PENDING
+                          </Badge>
+                          <div className="text-xs text-yellow-600 font-mono text-right">
+                            <p>Key: {request.appointmentKey}</p>
+                            <p>ID: {request._id.slice(-8)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}      {/* Doctor Schedules Display */}
+      {!loading && Object.keys(schedules).length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold text-sky-800">Doctor Schedules (from doctor_schedules collection)</h3>
+          {Object.entries(schedules).map(([doctorId, schedule]) => {
+            const doctor = doctors[doctorId]
+            return (
+              <Card key={doctorId} className="border-sky-200">
+                <CardHeader>
+                  <CardTitle className="text-sky-700">
+                    {doctor?.name || `Doctor ID: ${doctorId}`}
+                  </CardTitle>
+                  {doctor?.specialization && (
+                    <Badge variant="outline" className="w-fit text-sky-700 border-sky-300">
+                      {doctor.specialization}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {schedule.days?.map((day) => (
+                      <div key={day.dayOfWeek} className="border rounded-lg p-3">
+                        <h4 className="font-semibold text-gray-900 mb-2">{day.dayOfWeek}</h4>
+                        {day.isOffDay ? (
+                          <span className="text-red-600">Off Day</span>
+                        ) : (
+                          <div className="space-y-1 text-sm">
+                            {day.morningStart && day.morningEnd && (
+                              <div>Morning: {day.morningStart} - {day.morningEnd}</div>
+                            )}
+                            {day.eveningStart && day.eveningEnd && (
+                              <div>Evening: {day.eveningStart} - {day.eveningEnd}</div>
+                            )}
+                            <div className="text-sky-600">Slot: {day.slotduration} min</div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+        {/* Empty State */}
+        {!loading && appointments.length === 0 && appointmentRequests.length === 0 && (
+          <Card className="bg-white shadow-lg border-0">
+            <CardContent className="p-12 text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Stethoscope className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">No Appointments Found</h3>
+              <p className="text-gray-600 mb-6">
+                You don't have any appointments or pending requests at the moment.
+              </p>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  Ready to schedule your next appointment?
+                </p>
+                <div className="flex gap-3 justify-center">
+                  <Button 
+                    onClick={autoFindCurrentPatientAppointments}
+                    className="bg-sky-600 hover:bg-sky-700"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Check Again
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => window.location.href = '/'}
+                    className="border-sky-300 text-sky-700 hover:bg-sky-50"
+                  >
+                    Book Appointment
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {!loading && Object.keys(schedules).length === 0 && searchDoctorId && (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-gray-600">No schedule found for this doctor.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+  )
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Doctor Schedule API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 800px; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .result { background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 3px; white-space: pre-wrap; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Doctor Schedule API Test</h1>
+        <p>Testing doctor ID: <strong>68c313d3e4b7269f1c7f601c</strong></p>
+        
+        <div class="test-section">
+            <h3>Test 1: Schedule for specific date (2025-09-10)</h3>
+            <button onclick="testScheduleWithDate()">Test Schedule API</button>
+            <div id="result1" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 2: Schedule for current date</h3>
+            <button onclick="testScheduleCurrentDate()">Test Current Date</button>
+            <div id="result2" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 3: Debug search</h3>
+            <button onclick="testDebugSearch()">Test Debug Search</button>
+            <div id="result3" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testScheduleWithDate() {
+            const result = document.getElementById('result1');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/schedule/68c313d3e4b7269f1c7f601c?date=2025-09-10');
+                const data = await response.json();
+                
+                result.innerHTML = `<span class="success">✓ Success</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Error</span>\n${error.message}`;
+            }
+        }
+        
+        async function testScheduleCurrentDate() {
+            const result = document.getElementById('result2');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/schedule/68c313d3e4b7269f1c7f601c');
+                const data = await response.json();
+                
+                result.innerHTML = `<span class="success">✓ Success</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Error</span>\n${error.message}`;
+            }
+        }
+        
+        async function testDebugSearch() {
+            const result = document.getElementById('result3');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/find-doctor-schedule');
+                const data = await response.json();
+                
+                result.innerHTML = `<span class="success">✓ Success</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                result.innerHTML = `<span class="error">✗ Error</span>\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

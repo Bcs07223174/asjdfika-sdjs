@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seed Database</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #0ea5e9; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0284c7; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 6px; background: #f0f9ff; border: 1px solid #0ea5e9; }
+        .loading { opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 ClinicCare Demo Data Setup</h1>
+        <p>Click the button below to populate your database with demo doctors, patients, and appointments.</p>
+        
+        <button onclick="seedDatabase()" id="seedBtn">
+            🌱 Seed Database with Demo Data
+        </button>
+        
+        <div id="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function seedDatabase() {
+            const btn = document.getElementById('seedBtn');
+            const result = document.getElementById('result');
+            
+            btn.textContent = '⏳ Seeding Database...';
+            btn.disabled = true;
+            btn.classList.add('loading');
+            
+            try {
+                const response = await fetch('/api/seed', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    result.innerHTML = `
+                        <h3>✅ Success! Demo data has been added to your database:</h3>
+                        <ul>
+                            <li><strong>${data.summary.doctors}</strong> Doctors</li>
+                            <li><strong>${data.summary.patients}</strong> Patients</li>
+                            <li><strong>${data.summary.schedules}</strong> Doctor Schedules</li>
+                            <li><strong>${data.summary.appointments}</strong> Sample Appointments</li>
+                        </ul>
+                        <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                            <h4>🔑 Demo Login Credentials:</h4>
+                            <p><strong>Email:</strong> ${data.loginCredentials.email}</p>
+                            <p><strong>Password:</strong> ${data.loginCredentials.password}</p>
+                        </div>
+                        <p style="margin-top: 15px;">
+                            <a href="/" style="color: #0ea5e9; text-decoration: none;">← Go back to ClinicCare</a>
+                        </p>
+                    `;
+                    result.style.display = 'block';
+                } else {
+                    result.innerHTML = `
+                        <h3>❌ Error: ${data.error}</h3>
+                    `;
+                    result.style.display = 'block';
+                    result.style.background = '#fef2f2';
+                    result.style.borderColor = '#ef4444';
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <h3>❌ Error: ${error.message}</h3>
+                `;
+                result.style.display = 'block';
+                result.style.background = '#fef2f2';
+                result.style.borderColor = '#ef4444';
+            }
+            
+            btn.textContent = '✅ Database Seeded';
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    </script>
+</body>
+</html>
