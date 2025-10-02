@@ -6,8 +6,7 @@
   "main": "next.config.mjs",
   "type": "module",
   "engines": {
-    "node": ">=18.17.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=18.17.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -131,6 +130,7 @@
     "postcss": "^8.4.47",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.8",
+    "prisma": "^5.20.0",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.13",
     "tailwindcss-animate": "^1.0.7",
