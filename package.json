@@ -1,0 +1,13 @@
+{
+  "name": "patient-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "patient-main"
+  ],
+  "scripts": {
+    "dev": "cd patient-main && npm run dev",
+    "build": "cd patient-main && npm run build",
+    "start": "cd patient-main && npm run start"
+  }
+}
